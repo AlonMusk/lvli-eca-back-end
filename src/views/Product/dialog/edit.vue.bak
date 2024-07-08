@@ -1,0 +1,307 @@
+<template>
+	<!-- <div> -->
+
+	<el-dialog v-model="PParam.showEdit" :title="PParam.editTitle">
+		<el-form ref="ruleFormRef" :label-position="labelPosition" label-width="100px" :model="PParam.editForm"
+			style="max-width: 460px">
+			<el-form-item label="产品名">
+				<el-input v-model="PParam.editForm.id" />
+				<el-input v-model="PParam.editForm.name" />
+			</el-form-item>
+			<el-form-item label="产品标题">
+				<el-input v-model="PParam.editForm.title" />
+			</el-form-item>
+
+			<el-form-item label="主图">
+				<el-input v-model="PParam.editForm.main_img" />
+				<SimpleUpload :simpleUploadParam="simpleUploadParam" @child-event-simple-upload="handleSimpleUploadEvent">
+				</SimpleUpload>
+			</el-form-item>
+
+			<el-form-item label="产品子图">
+
+				<el-input v-model="PParam.editForm.sub_img" />
+				<MutilUpload :mutilUploadParam="mutilUploadParam" @child-event-mutil-upload="handleMutilUploadEvent">
+				</MutilUpload>
+			</el-form-item>
+
+			<el-form-item label="所属品牌">
+				<el-input v-model="PParam.editForm.brand_id" />
+				<el-select v-model="PParam.editForm.brand_id">
+					<el-option v-for="(item, index) in PParam.brandList" :index="index" :label="item.name"
+						:value="item.id"></el-option>
+				</el-select>
+			</el-form-item>
+
+			<el-form-item label="产品分类">
+				<el-input v-model="PParam.editForm.cat_id" />
+				<el-select v-model="PParam.editForm.cat_id">
+					<el-option v-for="(item, index) in PParam.catList" :index="index" :label="item.name"
+						:value="item.id"></el-option>
+				</el-select>
+
+			</el-form-item>
+
+			<!-- 属性 -->
+			<el-form-item label="产品属性">
+
+
+				<el-input v-model="PParam.editForm.attr_id" />
+				<el-checkbox-group v-model="PParam.checkAttr" @change="checkAttrsChange">
+					<el-checkbox v-for="(item, index) in PParam.attrList" :index="index" :label="item.name">
+
+					</el-checkbox>
+				</el-checkbox-group>
+			</el-form-item>
+			<!-- 标签 -->
+			<el-form-item label="产品标签">
+				<el-input v-model="PParam.editForm.tag_id" />
+				<el-checkbox-group v-model="PParam.checkTag" @change="checkTagsChange">
+					<el-checkbox v-for="(item, index) in PParam.tagList" :index="index" :label="item.name">
+
+					</el-checkbox>
+				</el-checkbox-group>
+
+			</el-form-item>
+			<!-- 产品详情 -->
+			<el-form-item label="产品详情">
+				<el-input v-model="PParam.editForm.content" />
+				<TextEditor :editorParam="editorParam" @child-event-editor="handleEditorEvent"></TextEditor>
+			</el-form-item>
+
+
+			<el-form-item label="产品规格">
+				<block v-for="(item, index) in PParam.editForm.sku" :index="item.id">
+					skuID:<el-input v-model="item.id" />
+					原价:<el-input v-model="item.old_price" />
+					销售价:<el-input v-model="item.price" />
+				</block>
+
+			</el-form-item>
+
+			<!-- 是否新品 -->
+			<el-form-item label="是否新品">
+				<el-input v-model="PParam.editForm.is_new" />
+				<el-radio-group v-model="PParam.editForm.is_new" class="ml-4">
+					<el-radio :label="1" size="large">上架</el-radio>
+					<el-radio :label="0" size="large">否</el-radio>
+				</el-radio-group>
+			</el-form-item>
+			<!-- 状态 上架  下架  -->
+			<el-form-item label="状态">
+				<el-input v-model="PParam.editForm.status" />
+				<el-radio-group v-model="PParam.editForm.status" class="ml-4">
+					<el-radio :label="1" size="large">上架</el-radio>
+					<el-radio :label="0" size="large">下架</el-radio>
+				</el-radio-group>
+			</el-form-item>
+
+
+
+		</el-form>
+		<template #footer>
+			<el-button type="primary" @click="emitEvent()"> 点击 </el-button>
+			<el-button type="primary" @click="cancel()"> 取消 </el-button>
+			<el-button type="primary" @click="submitForm(ruleFormRef)"> 保存 </el-button>
+		</template>
+	</el-dialog>
+	<!-- </div> -->
+</template>
+<script lang="ts" setup>
+import { provide, reactive, ref, watch, inject, computed, onBeforeUnmount } from "vue";
+
+import { toRefs, defineProps } from "vue";
+import { ProductEditApi, ProductAddApi } from "@/utils/apiProduct.ts";
+
+import { ElMessage } from 'element-plus'
+import bus from '@/utils/bus.ts';
+import SimpleUpload from "@/components/SimpleUpload.vue";
+import MutilUpload from "@/components/MutilUpload.vue";
+import TextEditor from "@/components/TextEditor.vue";
+
+
+const reqParam = inject('param')
+console.log('父组件传递过来的值', reqParam.value);
+let main_img = reqParam.value[0].editForm.main_img;
+
+let simpleFileList = reqParam.value[0].simpleFileList;
+let mutilFileList = reqParam.value[0].mutilFileList;
+let content = reqParam.value[0].editForm.content;
+
+//主图
+let simpleUploadParam = ref([{
+	fileUrl: main_img,
+	simpleFileList: simpleFileList,
+	countNumber: 0,
+}]);
+provide('simpleUploadParam', simpleUploadParam);
+
+//子图
+let mutilUploadParam = ref([{
+	mutilFileList: mutilFileList,
+	limit: 5,
+	countNumber: 0,
+}]);
+provide('mutilUploadParam', mutilUploadParam);
+
+//产品详情
+let editorParam = ref([{
+	content: content,
+	countNumber: 0,
+}]);
+provide('editorParam', editorParam);
+
+//加 '/'前缀
+function addPrefix(str) {
+	console.log('str', str);
+	if (str === '' || str === 0) {
+		return str;
+	}
+	if (str.startsWith('/')) {
+		return str;
+	} else {
+		return '/' + str;
+	}
+}
+
+//去掉'/'前缀
+function removePrefix(str) {
+	if (str.startsWith('/')) {
+		return str.slice(1);
+	} else {
+		return str;
+	}
+}
+
+const PParam = computed(() => {
+	console.log('父组件传递过来的新值', reqParam.value);
+
+	simpleUploadParam.value[0].countNumber += 1;
+	simpleUploadParam.value[0].fileUrl = addPrefix(reqParam.value[0].editForm.main_img);
+	if (simpleUploadParam.value[0].fileUrl) {
+		simpleUploadParam.value[0].simpleFileList = reqParam.value[0].simpleFileList;
+	}
+	mutilUploadParam.value[0].mutilFileList = reqParam.value[0].mutilFileList;
+
+	editorParam.value[0].content = reqParam.value[0].editForm.content;
+
+	return reqParam.value[0];
+})
+
+
+const handleSimpleUploadEvent = (simpleFileList) => {
+	console.log('接收到单图片子组件的事件', simpleFileList);
+
+	// 获取最后一个对象
+	let lastObject = simpleFileList[simpleFileList.length - 1];
+
+	// 清空原数组，并将最后一个对象重新添加进去
+	simpleFileList.splice(0, simpleFileList.length - 1);
+	//simpleFileList.push(lastObject);
+	reqParam.value[0].simpleFileList = simpleFileList;
+	reqParam.value[0].editForm.main_img = simpleFileList.map(obj => {
+		return addPrefix(obj.name);
+	}
+	).join(',');
+
+
+
+
+
+}
+
+const handleMutilUploadEvent = (mutilFileList) => {
+
+	reqParam.value[0].editForm.sub_img = mutilFileList.map(obj => {
+		return addPrefix(obj.name);
+	}
+	).join(',');
+	//过滤也是没有用的，还是有其他属性 mutilFileList
+	console.log('接收到多图片子组件的事件', mutilFileList);
+
+}
+
+//接收富文本编辑器的事件
+const handleEditorEvent = (content) => {
+	reqParam.value[0].editForm.content = content;
+	console.log('接收到富文本编辑器组件的事件', content);
+}
+
+
+//定时器用法
+// const intervalId = setInterval(() => {
+// 	reqParam.value[0].fileUrl = '1sdfdff';
+// 	console.log('testVal',testVal);
+// }, 5000); 
+
+//编辑
+const labelPosition = ref("right");
+
+//子传父数据
+const emit = defineEmits(['childEvent']);
+const emitEvent = () => {
+	emit('childEvent', '你好')
+}
+
+const cancel = () => {
+	reqParam.value[0].showEdit = false;
+}
+
+const checkAttrsChange = (ids: string[]) => {
+	let newIds = [];
+	if (ids.length > 0) {
+		reqParam.value[0].attrList.forEach(function (obj) {
+			if (ids.includes(obj.name.toString())) {
+				newIds.push(obj.id);
+			}
+		});
+	}
+	reqParam.value[0].editForm.attr_id = newIds.join(',');
+}
+
+
+const checkTagsChange = (ids: string[]) => {
+
+	let newIds = [];
+	if (ids.length > 0) {
+		reqParam.value[0].tagList.forEach(function (obj) {
+			if (ids.includes(obj.name.toString())) {
+				newIds.push(obj.id);
+			}
+		});
+	}
+	reqParam.value[0].editForm.tag_id = newIds.join(',');
+}
+
+const ruleFormRef = ref<FormInstance>();
+const submitForm = async (formEl: FormInstance | undefined) => {
+	console.log('submit PParam', PParam);
+	if (!formEl) return;
+	await formEl.validate((valid, fields) => {
+		if (valid) {
+			console.log("submit!", fields);
+
+			if (PParam.value.editForm.id == 0) {
+				ProductAddApi(PParam.value.editForm).then((res) => {
+					let resData = res.data;
+					if (resData.code == 200) {
+						ElMessage.info('操作成功');
+					}
+				});
+			} else {
+				ProductEditApi(PParam.value.editForm).then((res) => {
+					let resData = res.data;
+					if (resData.code == 200) {
+						ElMessage.info('操作成功');
+					}
+				});
+			}
+
+			return true;
+		} else {
+			console.log("error submit!", fields);
+		}
+	});
+};
+</script>
+<style scoped></style>
